@@ -1,0 +1,8 @@
+server:
+  port: 8072
+keycloak:
+  table:
+    public-key: ${PUBLIC_KEY}
+mongodb:
+  dbname: ${MONGODB_DBNAME}
+  uri: ${MONGO_URI}
