@@ -3,6 +3,8 @@ package recipes.table.api.controllers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -47,7 +49,8 @@ public class RecipeController {
         RecipeApiResponse recipeApiResponse = new RecipeApiResponse();
 
         try {
-            Page<Recipe> recipePage = recipeService.searchForRecipesByTitle(page, size, recipeSearchRequest.getSearchQuery());
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Recipe> recipePage = recipeService.searchForRecipesByTitle(recipeSearchRequest.getSearchQuery(), pageable);
 
             recipeApiResponse
                     .setData(recipeUtil.convertListToApi(recipePage.getContent()))
@@ -69,7 +72,8 @@ public class RecipeController {
         try {
             String userId = String.valueOf(SecurityContextHolder.getContext().getAuthentication().getPrincipal());
             log.debug("Getting recipes for user with ID {}", userId);
-            Page<Recipe> recipePage = recipeService.searchForRecipesByAuthorId(page, size, userId);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Recipe> recipePage = recipeService.searchForRecipesByAuthorId(userId, pageable);
 
             recipeApiResponse
                     .setErrors(null)
@@ -95,7 +99,7 @@ public class RecipeController {
         RecipeApiResponse recipeApiResponse = new RecipeApiResponse();
         try {
             Optional<Recipe> recipe = recipeService.getRecipeById(recipeId);
-            if (recipe.isPresent()) {
+            if (recipe.isPresent() && !recipe.get().getIsDeleted()) {
                 recipeApiResponse
                         .setPagination(null)
                         .setMessage("Successfully retrieved recipe!")
@@ -127,18 +131,18 @@ public class RecipeController {
         log.debug("Fetching recipe to determine if allowed to delete...");
         RecipeApiResponse recipeApiResponse = new RecipeApiResponse();
         recipeApiResponse.setPagination(null).setData(null);
-        Optional<Recipe> recipe = recipeService.getRecipeById(recipeId);
+        Recipe recipe = recipeService.getRecipeById(recipeId).orElse(null);
 
         try {
 
-            if (recipe.isPresent()) {
+            if (recipe != null) {
                 // Now check if authorId matches user's ID
                 //TODO: update this logic - first grab the user's ID and fetch this user's recipes, then do the check against authorId
                 //this guarantees that a recipe authored by another user will never be able to reach the forbidden response below, only stating no recipe found
                 //which while incorrect, makes more sense to add this extra layer of security for DELETE requests where the recipe ID could be substituted...
-                if (recipe.get().getAuthorId().equals(SecurityContextHolder.getContext().getAuthentication().getPrincipal())) {
+                if (recipe.getAuthorId().equals(SecurityContextHolder.getContext().getAuthentication().getPrincipal())) {
                     // Author is the current user, allow deletion
-                    recipeService.deleteRecipeById(recipe.get());
+                    recipeService.deleteRecipeById(recipe);
                     recipeApiResponse.setErrors(null).setMessage("Successfully deleted recipe!");
                     return new ResponseEntity<>(recipeApiResponse, HttpStatus.NO_CONTENT);
                 } else {

@@ -14,4 +14,5 @@ public class Recipe {
     private String authorId;
     private String title;
     private List<String> imageLinks;
+    private Boolean isDeleted;
 }

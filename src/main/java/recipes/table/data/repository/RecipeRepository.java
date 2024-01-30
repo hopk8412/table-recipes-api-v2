@@ -7,10 +7,14 @@ import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import recipes.table.data.model.Recipe;
 
+import java.util.List;
+
 @Repository
 public interface RecipeRepository extends MongoRepository<Recipe, String> {
     @Query("{'title': { $regex: ?0, $options: 'i' }}")
-    Page<Recipe> findByTitleContainingCaseInsensitive(String title, Pageable pageable);
+    Page<Recipe> findByTitleContainingCaseInsensitiveAndIsDeletedIsFalse(String title, Pageable pageable);
 
-    Page<Recipe> findByAuthorId(String authorId, Pageable pageable);
+    Page<Recipe> findByAuthorIdAndIsDeletedIsFalse(String authorId, Pageable pageable);
+
+    List<Recipe> findByIdInAndIsDeletedIsFalse(List<String> recipeIds);
 }
